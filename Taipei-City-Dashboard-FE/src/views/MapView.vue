@@ -11,7 +11,7 @@ Testing: Jack Huang (Data Scientist), Ian Huang (Data Analysis Intern)
 <!-- Map charts will be hidden in mobile mode and be replaced with the mobileLayers dialog -->
 
 <script setup>
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 import { DashboardComponent } from "city-dashboard-component";
 import { useContentStore } from "../store/contentStore";
 import { useDialogStore } from "../store/dialogStore";
@@ -72,6 +72,79 @@ function shouldDisable(map_config) {
 			.length > 0
 	);
 }
+
+const maxBounds = [
+	[121.3870596781498, 24.95733863075891], // Southwest coordinates
+	[121.6998231749096, 25.21179993640203], // Northeast coordinates
+];
+
+function isInBounds(latitude, longitude) {
+	const [sw, ne] = maxBounds;
+	return (
+		latitude >= sw[1] &&
+		latitude <= ne[1] &&
+		longitude >= sw[0] &&
+		longitude <= ne[0]
+	);
+}
+
+function updateMapCenter() {
+	// 嘗試從localStorage獲取緩存的位置數據
+	const cachedPosition = localStorage.getItem("geoPosition");
+	if (cachedPosition) {
+		const { latitude, longitude } = JSON.parse(cachedPosition);
+		if (isInBounds(latitude, longitude)) {
+			dialogStore.showNotification(
+				"info",
+				"您的位置在台北市範圍內，使用緩存的位置數據自動定位中心"
+			);
+
+			setTimeout(() => {
+				mapStore.setMapCenter([longitude, latitude]);
+			}, 1000);
+
+			return; // 由於使用了緩存的位置數據，這裡返回以避免進行不必要的位置請求
+		}
+	}
+
+	// 如果沒有緩存的位置數據或緩存的數據不在範圍內，則請求當前位置
+	if ("geolocation" in navigator) {
+		navigator.geolocation.getCurrentPosition(
+			(position) => {
+				const { latitude, longitude } = position.coords;
+				// 緩存當前位置
+				localStorage.setItem(
+					"geoPosition",
+					JSON.stringify({ latitude, longitude })
+				);
+
+				if (isInBounds(latitude, longitude)) {
+					dialogStore.showNotification(
+						"info",
+						"您的位置在台北市範圍內，自動定位中心"
+					);
+					setTimeout(() => {
+						mapStore.setMapCenter([longitude, latitude]);
+					}, 1000);
+				} else {
+					dialogStore.showNotification(
+						"info",
+						"您的位置不在台北市範圍內，無法自動定位"
+					);
+				}
+			},
+			(error) => {
+				console.error("Geolocation error: ", error);
+			}
+		);
+	} else {
+		console.error("Geolocation is not supported by this browser.");
+	}
+}
+
+onMounted(() => {
+	updateMapCenter();
+});
 </script>
 
 <template>

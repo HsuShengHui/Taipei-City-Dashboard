@@ -58,8 +58,24 @@ export const useMapStore = defineStore("map", {
 	}),
 	getters: {},
 	actions: {
+		setMapCenter(centerCoordinates, zoomLevel = 14) {
+			// 可以設定一個默認的縮放級別，比如 15
+			if (this.map && centerCoordinates.length === 2) {
+				// 使用 flyTo 方法來更新中心點和縮放級別
+				this.map.flyTo({
+					center: centerCoordinates,
+					zoom: zoomLevel, // 縮放級別可以是任何您需要的值，這裡設為 15
+					essential: true, // 這個選項是為了在使用 CSS transform 改變地圖大小時保證動畫正常執行
+				});
+				console.log("Successfully set new center: ", centerCoordinates);
+			} else {
+				console.error("Invalid coordinates or map is not initialized");
+			}
+		},
 		/* Initialize Mapbox */
 		// 1. Creates the mapbox instance and passes in initial configs
+
+		///
 		initializeMapBox() {
 			this.map = null;
 			const MAPBOXTOKEN = import.meta.env.VITE_MAPBOXTOKEN;
